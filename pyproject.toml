@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "finalproject-tsvetkova-m25-555"
+version = "0.1.0"
+description = ""
+authors = ["Arina <79160367+arinaat@users.noreply.github.com>"]
+readme = "README.md"
+packages = [{include = "finalproject_tsvetkova_m25_555", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+prettytable = "^3.17.0"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.14.14"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+project = "finalproject_tsvetkova_m25_555.main:main"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I"]
+
