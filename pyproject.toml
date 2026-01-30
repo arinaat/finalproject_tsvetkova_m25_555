@@ -4,7 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Arina <79160367+arinaat@users.noreply.github.com>"]
 readme = "README.md"
-packages = [{include = "finalproject_tsvetkova_m25_555", from = "src"}]
+packages = [{include = "valutatrade_hub", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -19,7 +19,7 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-project = "finalproject_tsvetkova_m25_555.main:main"
+project = "valutatrade_hub.main:main"
 
 [tool.ruff]
 line-length = 88
