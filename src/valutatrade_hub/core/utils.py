@@ -36,6 +36,8 @@ def validate_username(username: str) -> str:
     name = str(username).strip()
     if not name:
         raise ValueError("Имя пользователя не может быть пустым.")
+    if len(name) > 32:
+        raise ValueError("Имя пользователя не должно быть длиннее 32 символов.")
     return name
 
 
