@@ -62,9 +62,13 @@ def validate_amount(amount: Any) -> float:
 def read_json(path: Path, default: Any) -> Any:
     if not path.exists():
         return default
-    with path.open("r", encoding="utf-8") as f:
-        return json.load(f)
-
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Файл данных повреждён: {path}") from e
+    except OSError as e:
+        raise ValueError(f"Не удалось прочитать файл данных: {path}") from e
 
 def write_json(path: Path, obj: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
