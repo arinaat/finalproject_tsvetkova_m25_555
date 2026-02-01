@@ -251,3 +251,81 @@ def show_portfolio(base_currency: str = "USD") -> dict:
         "total_value": total,
         "base_currency": base,
     }
+
+
+def _load_user_portfolio(user_id: int) -> dict:
+    portfolios = load_portfolios()
+    for p in portfolios:
+        if p.get("user_id") == user_id:
+            return p
+    raise ValueError("Портфель не найден.")
+
+
+def _save_user_portfolio(updated: dict) -> None:
+    portfolios = load_portfolios()
+    user_id = updated.get("user_id")
+    out = []
+    replaced = False
+    for p in portfolios:
+        if p.get("user_id") == user_id:
+            out.append(updated)
+            replaced = True
+        else:
+            out.append(p)
+    if not replaced:
+        out.append(updated)
+    save_portfolios(out)
+
+
+def buy_currency(currency_code: str, amount: Any) -> dict:
+    #Покупка валюты: увеличиваем баланс кошелька currency_code на amount
+    session = get_current_user()
+    if session is None:
+        raise ValueError("Необходимо выполнить login.")
+
+    code = normalize_currency_code(currency_code)
+    amt = float(amount)
+    if amt <= 0:
+        raise ValueError("Сумма должна быть больше 0.")
+
+    user_id = session["user_id"]
+    portfolio = _load_user_portfolio(user_id)
+    wallets = portfolio.get("wallets", {})
+
+    if code not in wallets:
+        wallets[code] = {"currency_code": code, "balance": 0.0}
+
+    wallets[code]["balance"] = float(wallets[code]["balance"]) + amt
+    portfolio["wallets"] = wallets
+
+    _save_user_portfolio(portfolio)
+    return {"currency_code": code, "balance": wallets[code]["balance"]}
+
+
+def sell_currency(currency_code: str, amount: Any) -> dict:
+    # Продажа валюты: уменьшаем баланс кошелька currency_code на amount
+    session = get_current_user()
+    if session is None:
+        raise ValueError("Необходимо выполнить login.")
+
+    code = normalize_currency_code(currency_code)
+    amt = float(amount)
+    if amt <= 0:
+        raise ValueError("Сумма должна быть больше 0.")
+
+    user_id = session["user_id"]
+    portfolio = _load_user_portfolio(user_id)
+    wallets = portfolio.get("wallets", {})
+
+    if code not in wallets:
+        raise ValueError("Кошелёк не найден.")
+
+    balance = float(wallets[code]["balance"])
+    if amt > balance:
+        raise ValueError("Недостаточно средств.")
+
+    wallets[code]["balance"] = balance - amt
+    portfolio["wallets"] = wallets
+
+    _save_user_portfolio(portfolio)
+    return {"currency_code": code, "balance": wallets[code]["balance"]}
