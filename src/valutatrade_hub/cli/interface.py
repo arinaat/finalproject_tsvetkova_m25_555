@@ -123,4 +123,6 @@ def run_cli(argv: list[str] | None = None) -> None:
 
         raise ValueError("Неизвестная команда.")
     except ValueError as e:
-        raise SystemExit(f"Ошибка: {e}") from e
+        raise SystemExit(f"Ошибка: {e}")
+    except Exception:
+        raise SystemExit("Ошибка: Внутренняя ошибка.")
