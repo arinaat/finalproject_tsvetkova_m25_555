@@ -4,7 +4,10 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from valutatrade_hub.core.currencies import get_currency
-from valutatrade_hub.core.exceptions import InsufficientFundsError
+from valutatrade_hub.core.exceptions import (
+    CurrencyNotFoundError,
+    InsufficientFundsError,
+)
 from valutatrade_hub.core.models import Portfolio, User, Wallet
 from valutatrade_hub.core.utils import (
     data_file,
@@ -79,38 +82,59 @@ def ensure_rates_fresh() -> dict[str, Any]:
     return cache
 
 
-def get_rate(from_currency: str, to_currency: str) -> dict[str, Any]:
-    """Возвращает курс from->to и метаданные.
+def get_rate(from_currency: str, to_currency: str) -> dict:
+    # Курс из from_currency в to_currency.
+    # Формат rates: сколько единиц валюты X за 1 единицу base.
+    from_code = normalize_currency_code(from_currency)
+    to_code = normalize_currency_code(to_currency)
 
-    Формат кэша (ensure_rates_fresh):
-    - base="USD"
-    - rates[CCY] = сколько CCY за 1 USD
-    """
-    from_code = get_currency(from_currency).code
-    to_code = get_currency(to_currency).code
+    # Валидация валют через справочник
+    try:
+        get_currency(from_code)
+    except CurrencyNotFoundError as e:
+        raise ValueError(f"Неизвестная валюта '{from_code}'") from e
 
-    # 1) Тождественный курс
+    try:
+        get_currency(to_code)
+    except CurrencyNotFoundError as e:
+        raise ValueError(f"Неизвестная валюта '{to_code}'") from e
+
     if from_code == to_code:
         return {
             "from": from_code,
             "to": to_code,
             "rate": 1.0,
-            "source": "LocalCache",
+            "source": "Identity",
             "last_refresh": None,
             "base": from_code,
         }
 
     data = ensure_rates_fresh()
     base = normalize_currency_code(data.get("base", "USD"))
-    rates: dict[str, float] = data.get("rates", {})
+    rates = data.get("rates") or {}
 
     if not rates:
         raise ValueError(
             "Нет данных о курсах. Выполните update-rates или повторите позже."
         )
 
-    # Нормализуем только базу и читаем ставки по ключам
-    # rates[CCY] = CCY за 1 USD, т.е. USD->CCY = 1/rates[CCY], CCY->USD = rates[CCY]
+    def _per_base(code: str) -> float:
+        if code == base:
+            return 1.0
+        if code not in rates:
+            raise ValueError(f"Нет курса для валюты {code} относительно {base}.")
+        return float(rates[code])
+
+    rate = _per_base(to_code) / _per_base(from_code)
+    return {
+        "from": from_code,
+        "to": to_code,
+        "rate": rate,
+        "source": data.get("source", "LocalCache"),
+        "last_refresh": data.get("last_refresh"),
+        "base": base,
+    }
+
     def _get(ccy: str) -> float:
         if ccy not in rates:
             raise ValueError(f"Не удалось получить курс для {ccy}->{base}")
