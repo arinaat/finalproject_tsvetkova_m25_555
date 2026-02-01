@@ -1,4 +1,4 @@
-#Singleton SettingsLoader
+# Singleton SettingsLoader
 
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ class Settings:
 
 
 class SettingsLoader:
-    #загружает и кеширует настройки
+    # загружает и кеширует настройки
 
     _instance: "SettingsLoader | None" = None
 
@@ -40,12 +40,12 @@ class SettingsLoader:
         return cls._instance
 
     def get(self, key: str, default: Any = None) -> Any:
-        #Получить значение настройки по ключу
+        # Получить значение настройки по ключу
         s = self.load()
         return getattr(s, key, default)
 
     def load(self) -> Settings:
-        #Загрузить настройки, дальше отдаём кеш
+        # Загрузить настройки, дальше отдаём кеш
         if self._settings is not None:
             return self._settings
 

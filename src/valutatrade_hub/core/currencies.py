@@ -26,7 +26,7 @@ def _validate_name(name: str) -> str:
 
 @dataclass(frozen=True)
 class Currency(ABC):
-    #Абстрактная валюта
+    # Абстрактная валюта
 
     name: str
     code: str

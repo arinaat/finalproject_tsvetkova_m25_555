@@ -23,9 +23,9 @@ def _ensure_datetime(value: datetime | str) -> datetime:
 def _is_number(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool)
 
+
 # пользователь
 class User:
-
     def __init__(
         self,
         user_id: int,
@@ -126,9 +126,9 @@ class User:
             "registration_date": self._registration_date.isoformat(timespec="seconds"),
         }
 
+
 # кошелёк пользователя для одной конкретной валюты
 class Wallet:
-
     def __init__(self, currency_code: str, balance: float = 0.0) -> None:
         code = str(currency_code).strip().upper()
         if not code:
@@ -177,9 +177,9 @@ class Wallet:
     def to_dict(self) -> dict[str, Any]:
         return {"currency_code": self._currency_code, "balance": self._balance}
 
+
 # управление кошельками пользователя
 class Portfolio:
-
     def __init__(self, user: User, wallets: dict[str, Wallet] | None = None) -> None:
         self._user = user
         self._user_id = user.user_id

@@ -16,6 +16,8 @@ from valutatrade_hub.core.usecases import (
     sell_currency,
     show_portfolio,
 )
+from valutatrade_hub.infra.logging_config import setup_parser_service_logger
+from valutatrade_hub.infra.settings import SettingsLoader
 
 
 def _print_portfolio(result: dict) -> None:
@@ -70,6 +72,9 @@ def build_parser() -> argparse.ArgumentParser:
 def run_cli(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    settings = SettingsLoader()
+    setup_parser_service_logger(settings.logs_dir / "parser_service.log")
 
     try:
         if args.command == "register":

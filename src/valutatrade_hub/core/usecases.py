@@ -27,7 +27,7 @@ from valutatrade_hub.core.utils import (
 from valutatrade_hub.infra.decorators import log_action
 from valutatrade_hub.infra.settings import SettingsLoader
 
-#Курсы и кэш
+# Курсы и кэш
 
 CACHE_TTL_SECONDS = 300  # 5 минут
 
@@ -74,7 +74,7 @@ def _refresh_rates_stub() -> dict[str, Any]:
 
 
 def ensure_rates_fresh() -> dict[str, Any]:
-    #Возвращает актуальные курсы. Если кэш устарел — обновляет и сохраняет
+    # Возвращает актуальные курсы. Если кэш устарел — обновляет и сохраняет
     cache = load_rates()
     if not _is_fresh(cache.get("last_refresh")) or "rates" not in cache:
         cache = _refresh_rates_stub()
@@ -160,8 +160,7 @@ def get_rate(from_currency: str, to_currency: str) -> dict:
     }
 
 
-
-#Регистрация/логин/сессия
+# Регистрация/логин/сессия
 
 SESSION_JSON = data_file("session.json")
 
@@ -180,7 +179,7 @@ def _find_user_by_username(users: list[dict], username: str) -> dict | None:
 
 
 def get_current_user() -> dict | None:
-    #Текущий пользователь из session.json или None
+    # Текущий пользователь из session.json или None
     session = read_json(SESSION_JSON, default={"user_id": None, "username": None})
     if session.get("user_id") is None:
         return None
@@ -188,7 +187,7 @@ def get_current_user() -> dict | None:
 
 
 def logout() -> None:
-    #Сброс сессии
+    # Сброс сессии
     write_json(SESSION_JSON, {"user_id": None, "username": None})
 
 
@@ -376,4 +375,3 @@ def sell_currency(currency_code: str, amount: Any) -> dict:
 
     _save_user_portfolio(portfolio)
     return {"currency_code": code, "balance": wallets[code]["balance"]}
-

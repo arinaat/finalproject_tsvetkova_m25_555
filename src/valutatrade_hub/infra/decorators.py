@@ -12,7 +12,7 @@ F = TypeVar("F", bound=Callable[..., Any])
 
 def log_action(action_name: str) -> Callable[[F], F]:
     # Логирует начало/успех/ошибку действия
-    
+
     def decorator(func: F) -> F:
         @wraps(func)
         def wrapper(*args: Any, **kwargs: Any) -> Any:

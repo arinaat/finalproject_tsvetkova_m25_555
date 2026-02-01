@@ -72,6 +72,7 @@ def read_json(path: Path, default: Any) -> Any:
     except OSError as e:
         raise ValueError(f"Не удалось прочитать файл данных: {path}") from e
 
+
 def write_json(path: Path, obj: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as f:
