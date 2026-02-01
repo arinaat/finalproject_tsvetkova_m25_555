@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from valutatrade_hub.core.models import Portfolio, User
+from valutatrade_hub.core.models import Portfolio, User, Wallet
 from valutatrade_hub.core.utils import (
     data_file,
     load_portfolios,
@@ -193,3 +193,61 @@ def login(username: str, password: str) -> dict:
 
     write_json(SESSION_JSON, {"user_id": user.user_id, "username": user.username})
     return user.get_user_info()
+
+
+def show_portfolio(base_currency: str = "USD") -> dict:
+    # Показать портфель текущего пользователя
+    session = get_current_user()
+    if session is None:
+        raise ValueError("Необходимо выполнить login.")
+
+    user_id = session["user_id"]
+    base = normalize_currency_code(base_currency)
+
+    portfolios = load_portfolios()
+    raw = None
+    for p in portfolios:
+        if p.get("user_id") == user_id:
+            raw = p
+            break
+    if raw is None:
+        raise ValueError("Портфель не найден.")
+
+    # восстановим портфель в объектную модель
+    users = load_users()
+    u_raw = None
+    for u in users:
+        if u.get("user_id") == user_id:
+            u_raw = u
+            break
+    if u_raw is None:
+        raise ValueError("Пользователь не найден.")
+
+    user = User(
+        user_id=u_raw["user_id"],
+        username=u_raw["username"],
+        hashed_password=u_raw["hashed_password"],
+        salt=u_raw["salt"],
+        registration_date=u_raw["registration_date"],
+    )
+
+    wallets = {}
+    raw_wallets = raw.get("wallets", {})
+    for code, w in raw_wallets.items():
+        # w: {"currency_code": "...", "balance": ...}
+        wallets[code] = Wallet(currency_code=w["currency_code"], balance=w["balance"])
+
+    portfolio = Portfolio(user=user, wallets=wallets)
+
+    rows = []
+    for w in portfolio.wallets.values():
+        rows.append({"currency_code": w.currency_code, "balance": w.balance})
+
+    total = portfolio.get_total_value(base_currency=base)
+
+    return {
+        "user": user.get_user_info(),
+        "wallets": rows,
+        "total_value": total,
+        "base_currency": base,
+    }
