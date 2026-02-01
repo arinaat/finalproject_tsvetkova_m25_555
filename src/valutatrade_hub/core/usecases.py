@@ -16,6 +16,7 @@ from valutatrade_hub.core.utils import (
     save_portfolios,
     save_rates,
     save_users,
+    validate_amount,
     validate_password,
     validate_username,
     write_json,
@@ -284,9 +285,7 @@ def buy_currency(currency_code: str, amount: Any) -> dict:
         raise ValueError("Необходимо выполнить login.")
 
     code = normalize_currency_code(currency_code)
-    amt = float(amount)
-    if amt <= 0:
-        raise ValueError("Сумма должна быть больше 0.")
+    amt = validate_amount(amount)
 
     user_id = session["user_id"]
     portfolio = _load_user_portfolio(user_id)
@@ -309,9 +308,7 @@ def sell_currency(currency_code: str, amount: Any) -> dict:
         raise ValueError("Необходимо выполнить login.")
 
     code = normalize_currency_code(currency_code)
-    amt = float(amount)
-    if amt <= 0:
-        raise ValueError("Сумма должна быть больше 0.")
+    amt = validate_amount(amount)
 
     user_id = session["user_id"]
     portfolio = _load_user_portfolio(user_id)
