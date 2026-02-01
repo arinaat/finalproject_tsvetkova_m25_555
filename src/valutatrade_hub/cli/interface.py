@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 
 from prettytable import PrettyTable
 
@@ -18,6 +19,12 @@ from valutatrade_hub.core.usecases import (
 )
 from valutatrade_hub.infra.logging_config import setup_parser_service_logger
 from valutatrade_hub.infra.settings import SettingsLoader
+from valutatrade_hub.parser_service.api_clients import (
+    CoinGeckoClient,
+    ExchangeRateApiClient,
+)
+from valutatrade_hub.parser_service.config import ParserConfig
+from valutatrade_hub.parser_service.updater import RatesUpdater
 
 
 def _print_portfolio(result: dict) -> None:
@@ -66,6 +73,34 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("show-portfolio", help="Показать портфель пользователя")
     sp.add_argument("--base", default="USD", help="Базовая валюта (USD по умолчанию)")
 
+    # update-rates (parser_service)
+    sp = sub.add_parser("update-rates", help="Обновить курсы (parser_service)")
+    sp.add_argument(
+        "--source",
+        choices=["all", "coingecko", "exchangerate"],
+        default="all",
+        help="Источник курсов: all/coingecko/exchangerate",
+    )
+
+    sp = sub.add_parser(
+        "show-rates",
+        help="Показать курсы из локального кеша",
+    )
+    sp.add_argument(
+        "--currency",
+        help="Показать курс только для валюты (например, BTC)",
+    )
+    sp.add_argument(
+        "--top",
+        type=int,
+        help="Показать N самых дорогих (по rate)",
+    )
+    sp.add_argument(
+        "--base",
+        default="USD",
+        help="Базовая валюта для вывода (USD по умолчанию)",
+    )
+
     return parser
 
 
@@ -73,7 +108,60 @@ def run_cli(argv: list[str] | None = None) -> None:
     parser = build_parser()
     args = parser.parse_args(argv)
 
-    settings = SettingsLoader()
+    if args.command == "show-rates":
+        from prettytable import PrettyTable
+
+        from valutatrade_hub.core.utils import read_json
+
+        settings = SettingsLoader().load()
+        data = read_json(settings.rates_json, default={})
+        pairs = data.get("pairs_usd_per_unit") or data.get("pairs") or {}
+        last_refresh = data.get("last_refresh")
+        source = data.get("source")
+
+        rows = []
+        for k, v in pairs.items():
+            if isinstance(v, dict) and "rate" in v:
+                rate = v.get("rate")
+                updated = v.get("updated_at") or v.get("timestamp") or last_refresh
+                src = v.get("source") or source
+            else:
+                rate = v
+                updated = last_refresh
+                src = source
+
+            if isinstance(k, str) and "_" in k:
+                frm, to = k.split("_", 1)
+            else:
+                frm, to = str(k), args.base
+
+            rows.append((frm, to, rate, updated, src))
+
+        if args.currency:
+            cur = args.currency.upper()
+            rows = [r for r in rows if r[0].upper() == cur]
+
+        def to_float(x):
+            try:
+                return float(x)
+            except Exception:
+                return None
+
+        if args.top:
+            rows = sorted(
+                rows,
+                key=lambda r: (to_float(r[2]) is None, to_float(r[2]) or 0.0),
+                reverse=True,
+            )[: args.top]
+
+        t = PrettyTable()
+        t.field_names = ["from", "to", "rate", "updated_at", "source"]
+        for frm, to, rate, updated, src in rows:
+            t.add_row([frm, to, rate, updated, src])
+        print(t)
+        return
+
+    settings = SettingsLoader().load()
     setup_parser_service_logger(settings.logs_dir / "parser_service.log")
 
     try:
@@ -126,8 +214,21 @@ def run_cli(argv: list[str] | None = None) -> None:
             _print_portfolio(result)
             return
 
+        if args.command == "update-rates":
+            cfg = ParserConfig.from_env()
+            clients = [CoinGeckoClient(cfg), ExchangeRateApiClient(cfg)]
+            updater = RatesUpdater(cfg, clients)
+            res = updater.run_update()
+            updated = res.get("updated_pairs", 0)
+            errors = res.get("errors", [])
+            print(f"Курсы обновлены. Пар: {updated}. Ошибок: {len(errors)}")
+            return
+
         raise ValueError("Неизвестная команда.")
+
     except ValueError as e:
-        raise SystemExit(f"Ошибка: {e}")
-    except Exception:
-        raise SystemExit("Ошибка: Внутренняя ошибка.")
+        raise SystemExit(f"Ошибка: {e}") from e
+    except Exception as e:
+        logging.getLogger("parser_service").exception("CLI: внутренняя ошибка")
+        msg = "Ошибка: Внутренняя ошибка. Подробности в logs/parser_service.log"
+        raise SystemExit(msg) from e

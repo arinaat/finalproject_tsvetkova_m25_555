@@ -150,7 +150,7 @@ class ExchangeRateApiClient(BaseApiClient):
             err_type = data.get("error-type")
             raise ApiRequestError(f"ExchangeRate-API: result != success ({err_type})")
 
-        rates = data.get("rates", {})
+        rates = data.get("rates", {}) or data.get("conversion_rates", {})
         if not isinstance(rates, dict):
             raise ApiRequestError("ExchangeRate-API: invalid rates format")
 
