@@ -1,26 +1,44 @@
+import logging
 import unittest
+from io import StringIO
+from unittest.mock import patch
 
 from valutatrade_hub.infra.decorators import log_action
-from valutatrade_hub.infra.settings import SettingsLoader
 
 
 class TestLoggingDecorator(unittest.TestCase):
-    def test_log_file_written(self) -> None:
-        settings = SettingsLoader().reload()
-        # очистим лог перед тестом
-        if settings.actions_log.exists():
-            settings.actions_log.unlink()
+    def test_log_messages_written(self) -> None:
+        buf = StringIO()
 
-        @log_action("test_action")
-        def f(x: int) -> int:
-            return x + 1
+        logger = logging.getLogger("test_actions_logger")
+        logger.setLevel(logging.INFO)
 
-        self.assertEqual(f(1), 2)
+        # Сбрасываем хендлеры, чтобы тест был детерминированным
+        logger.handlers = []
+        handler = logging.StreamHandler(buf)
+        handler.setLevel(logging.INFO)
 
-        self.assertTrue(settings.actions_log.exists())
-        txt = settings.actions_log.read_text(encoding="utf-8")
-        self.assertIn("START test_action", txt)
-        self.assertIn("OK test_action", txt)
+        # Важно: формат без времени, чтобы просто проверять текст
+        handler.setFormatter(logging.Formatter("%(levelname)s %(message)s"))
+        logger.addHandler(handler)
+        logger.propagate = False
+
+        # Патчим именно функцию, которую decorators.py импортировал
+        with patch(
+            "valutatrade_hub.infra.decorators.get_actions_logger",
+            return_value=logger,
+        ):
+
+            @log_action("test")
+            def dummy() -> int:
+                return 1
+
+            res = dummy()
+            self.assertEqual(res, 1)
+
+        text = buf.getvalue()
+        self.assertIn("INFO START test", text)
+        self.assertIn("INFO OK test", text)
 
 
 if __name__ == "__main__":

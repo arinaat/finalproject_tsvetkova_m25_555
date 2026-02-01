@@ -21,6 +21,7 @@ from valutatrade_hub.core.utils import (
     validate_username,
     write_json,
 )
+from valutatrade_hub.infra.decorators import log_action
 from valutatrade_hub.infra.settings import SettingsLoader
 
 #Курсы и кэш
@@ -296,6 +297,7 @@ def _save_user_portfolio(updated: dict) -> None:
     save_portfolios(out)
 
 
+@log_action("buy")
 def buy_currency(currency_code: str, amount: Any) -> dict:
     # Покупка валюты: увеличиваем баланс кошелька currency_code на amount
     session = get_current_user()
@@ -320,6 +322,7 @@ def buy_currency(currency_code: str, amount: Any) -> dict:
     return {"currency_code": code, "balance": wallets[code]["balance"]}
 
 
+@log_action("sell")
 def sell_currency(currency_code: str, amount: Any) -> dict:
     # Продажа валюты: уменьшаем баланс кошелька currency_code на amount
     session = get_current_user()
