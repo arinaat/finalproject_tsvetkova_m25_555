@@ -11,3 +11,7 @@ build/
 .idea/
 .vscode/
 logs/
+
+# runtime data
+/data/*.json
+/logs/
