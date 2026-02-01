@@ -5,6 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from valutatrade_hub.core.currencies import get_currency
+from valutatrade_hub.core.exceptions import InsufficientFundsError
 from valutatrade_hub.core.models import Portfolio, User, Wallet
 from valutatrade_hub.core.utils import (
     data_file,
@@ -279,12 +281,13 @@ def _save_user_portfolio(updated: dict) -> None:
 
 
 def buy_currency(currency_code: str, amount: Any) -> dict:
-    #Покупка валюты: увеличиваем баланс кошелька currency_code на amount
+    # Покупка валюты: увеличиваем баланс кошелька currency_code на amount
     session = get_current_user()
     if session is None:
         raise ValueError("Необходимо выполнить login.")
 
-    code = normalize_currency_code(currency_code)
+    cur = get_currency(currency_code)
+    code = cur.code
     amt = validate_amount(amount)
 
     user_id = session["user_id"]
@@ -294,7 +297,7 @@ def buy_currency(currency_code: str, amount: Any) -> dict:
     if code not in wallets:
         wallets[code] = {"currency_code": code, "balance": 0.0}
 
-    wallets[code]["balance"] = float(wallets[code]["balance"]) + amt
+    wallets[code]["balance"] = float(wallets[code]["balance"]) + float(amt)
     portfolio["wallets"] = wallets
 
     _save_user_portfolio(portfolio)
@@ -307,22 +310,27 @@ def sell_currency(currency_code: str, amount: Any) -> dict:
     if session is None:
         raise ValueError("Необходимо выполнить login.")
 
-    code = normalize_currency_code(currency_code)
+    # Валюта через реестр (если неизвестна - CurrencyNotFoundError)
+    cur = get_currency(currency_code)
+    code = cur.code
+
     amt = validate_amount(amount)
 
     user_id = session["user_id"]
     portfolio = _load_user_portfolio(user_id)
     wallets = portfolio.get("wallets", {})
 
+    # Если кошелька нет - считаем доступно 0.0 и кидаем InsufficientFundsError
     if code not in wallets:
-        raise ValueError("Кошелёк не найден.")
+        raise InsufficientFundsError(available=0.0, required=float(amt), code=code)
 
     balance = float(wallets[code]["balance"])
-    if amt > balance:
-        raise ValueError("Недостаточно средств.")
+    if float(amt) > balance:
+        raise InsufficientFundsError(available=balance, required=float(amt), code=code)
 
-    wallets[code]["balance"] = balance - amt
+    wallets[code]["balance"] = balance - float(amt)
     portfolio["wallets"] = wallets
 
     _save_user_portfolio(portfolio)
     return {"currency_code": code, "balance": wallets[code]["balance"]}
+
